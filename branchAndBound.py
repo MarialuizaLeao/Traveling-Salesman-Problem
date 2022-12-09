@@ -9,12 +9,10 @@ import signal
 import csv
 import tracemalloc
 
-#instancias = sys.argv[1]
-#tipoDistancia = sys.argv[2]
-#algoritmo = sys.argv[3]
-#instancias = int(instancias)
-instancias = 4
-tipoDistancia = 'euclidiana'
+instancias = sys.argv[1]
+tipoDistancia = sys.argv[2]
+algoritmo = sys.argv[3]
+instancias = int(instancias)
 
 def Manhattan(x, y):
     matriz = np.full((len(x), len(y)), 0, dtype=int)
@@ -162,7 +160,7 @@ def approxTspTour(G, A, c):
     custo = boundFinal(A, cicloHamiltoniano)
     return cicloHamiltoniano
 
-def christofidesTsp(G, A, c):
+def approxTspChristofides(G, A, c):
     arvoreMinima = tree.minimum_spanning_tree(G,algorithm="prim")
     verticesImpares = []
     for i in range(c):
@@ -186,6 +184,7 @@ def christofidesTsp(G, A, c):
 
 def signal_handler(signum,frame):
     raise Exception("Timed out!")
+
 signal.signal(signal.SIGALRM, signal_handler)
 signal.alarm(1800)
 
@@ -196,7 +195,12 @@ writer = csv.writer(tests)
 A, G = definindoInstancias(instancias, tipoDistancia)
 
 try:
-    solucao = christofidesTsp(G, A,  2**(instancias))
+    if(algoritmo == 'bnb'):
+        solucao = bnbTsp(A, 2**(instancias))
+    elif(algoritmo == 'tour'):
+        solucao = approxTspTour(G, A, 2**(instancias))
+    elif(algoritmo == 'chr'):
+        solucao = approxTspChristofides(G, A,  2**(instancias))
     writer.writerow(solucao)
     tests.close()   
 except Exception:
