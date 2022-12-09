@@ -1,6 +1,12 @@
 import numpy as np
 import random as rd
 
+exemplo = np.array([[np.inf, 3, 1, 5, 8],
+                  [3, np.inf, 6, 7, 9],
+                  [1, 6, np.inf, 4, 2],
+                  [5, 7, 4, np.inf, 3],
+                  [8, 9, 2, 3, np.inf]])
+
 def Manhattan(x, y):
     matriz = np.full((len(x), len(y)), 0, dtype=int)
     for i in range(len(x)):

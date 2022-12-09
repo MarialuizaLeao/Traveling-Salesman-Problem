@@ -1,11 +1,62 @@
+from networkx.algorithms import tree
+import networkx as nx
+import numpy as np
 import numpy as np
 import heapq as heap
+import sys
+import time
+import signal
+import csv
+import tracemalloc
 
-exemplo = np.array([[np.inf, 3, 1, 5, 8],
-                  [3, np.inf, 6, 7, 9],
-                  [1, 6, np.inf, 4, 2],
-                  [5, 7, 4, np.inf, 3],
-                  [8, 9, 2, 3, np.inf]])
+instancias = sys.argv[1]
+tipoDistancia = sys.argv[2]
+algoritmo = sys.argv[3]
+instancias = int(instancias)
+
+def Manhattan(x, y):
+    matriz = np.full((len(x), len(y)), 0, dtype=int)
+    for i in range(len(x)):
+        for j  in range(len(y)):
+            if (i == j):
+                dist = np.inf
+            else:
+                dist = abs(x[i] - x[j]) + abs(y[i] - y[j])
+            matriz[i][j] = dist
+            matriz[j][i] = dist
+    return matriz
+
+def Euclides(x, y):
+    matriz = np.full((len(x), len(y)), 0, dtype=float)
+    for i in range(len(x)):
+        for j  in range(len(y)):
+            if (i == j):
+                dist = np.inf
+            else:
+                dist = np.sqrt((x[i] - x[j])**2 + (y[i] - y[j])**2) 
+                dist = abs(dist)
+            matriz[i][j] = dist
+            matriz[j][i] = dist
+    return matriz
+
+def geradorPontos(N):
+    xCoordenadas = np.random.randint(0, 400, size = N)
+    yCoordenadas = np.random.randint(0, 400, size = N)
+    x = np.unique(xCoordenadas)
+    while (len(xCoordenadas) < N):
+        x = np.append(x, np.random.random_integers(0, 40))
+        x = np.unique(xCoordenadas)
+    return xCoordenadas, yCoordenadas
+
+def definindoInstancias(instancias, tipoDistancia):
+    x, y  = geradorPontos(2**(instancias))
+    matrizDistancia = []
+    if (tipoDistancia == 'euclidiana'):
+        matrizDistancia = Euclides(x, y)
+    elif(tipoDistancia == 'manhattan'):
+        matrizDistancia = Manhattan(x, y)
+    print(matrizDistancia)
+    return matrizDistancia
 
 class Node:
     def __init__(self, bounds, nivel, custo, solucao):
@@ -92,6 +143,28 @@ def bnbTsp(A, n):
                         heap.heappush(fila, novoNo)
                         
     return melhorSolucao
-                        
-print(bnbTsp(exemplo, 5))
-    
+
+def signal_handler(signum,frame):
+    raise Exception("Timed out!")
+signal.signal(signal.SIGALRM, signal_handler)
+signal.alarm(1800)
+
+tests = open('tests.csv','a')
+
+writer = csv.writer(tests)
+
+A = definindoInstancias(instancias, tipoDistancia)
+
+try:
+    ini = time.time()
+    tracemalloc.start()
+    solucao = bnbTsp(A, 2**(instancias))
+    print(solucao)
+    writer.writerow(solucao)
+    fim = time.time()
+    memexp = tracemalloc.get_traced_memory()[1]
+    timeexp = round(fim-ini,1)
+    tracemalloc.stop()
+    tests.close()   
+except Exception:
+    tests.close()    
