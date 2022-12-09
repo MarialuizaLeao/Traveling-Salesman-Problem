@@ -6,7 +6,7 @@ def Manhattan(x, y):
     for i in range(len(x)):
         for j  in range(len(y)):
             if (i == j):
-                matriz[i][j] = -1
+                matriz[i][j] = np.inf
             else:
                 dist = abs(x[i] - x[j]) + abs(y[i] - y[j])
         matriz[i][j] = dist
@@ -18,7 +18,7 @@ def Euclides(x, y):
     for i in range(len(x)):
         for j  in range(len(y)):
             if (i == j):
-                matriz[i][j] = -1
+                matriz[i][j] = np.inf
             else:
                 dist = np.sqrt((x[i] - x[j])**2 + (y[i] - y[j])**2) 
                 dist = abs(dist)
