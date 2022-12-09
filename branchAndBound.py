@@ -55,8 +55,11 @@ def definindoInstancias(instancias, tipoDistancia):
         matrizDistancia = Euclides(x, y)
     elif(tipoDistancia == 'manhattan'):
         matrizDistancia = Manhattan(x, y)
-    print(matrizDistancia)
-    return matrizDistancia
+    G = nx.complete_graph(2**(instancias))
+    for (u,v) in G.edges():
+        G.edges()[u,v]['weight'] = matrizDistancia[u][v]
+        
+    return matrizDistancia, G
 
 class Node:
     def __init__(self, bounds, nivel, custo, solucao):
@@ -77,13 +80,20 @@ class Node:
                         return True
         return False
 
-def menorAresta(arestas):
-    ordenado = np.sort(arestas, kind = 'quicksort')
-    return ordenado[0]
-
-def segundaMenorAresta(arestas):
-    ordenado = np.sort(arestas, kind = 'quicksort')
-    return ordenado[1]
+def menoresArestas(arestas, tipo = None):
+    min = np.inf
+    segundoMin = np.inf
+    for i in range(len(arestas)):
+        if(arestas[i] <= min and arestas[i] != np.inf):
+            segundoMin = min
+            min = arestas[i]
+        elif(arestas[i] <= segundoMin and arestas[i] != min):
+            segundoMin = arestas[i]
+    if(tipo == 'primeiro'):
+        return min
+    if(tipo == 'segundo'):
+        return segundoMin
+    return min + segundoMin        
 
 def bound(matriz, solucao):
     copia = matriz.copy()
@@ -96,20 +106,19 @@ def bound(matriz, solucao):
                     soma += (2 * copia[i][solucao[i + 1]])
                     copia[i][solucao[i + 1]] = np.inf
                     copia[solucao[i + 1]][i] = np.inf
-                    soma += menorAresta(copia[i][:])
+                    soma += menoresArestas(copia[i][:], 'primeira')
                 else:
                     if(i < len(solucao) - 1):
                         soma += (2 * copia[i][solucao[i + 1]])
                         copia[i][solucao[i + 1]] = np.inf
                         copia[solucao[i + 1]][i] = np.inf
                     else:
-                        soma += menorAresta(copia[i][:])
+                        soma += menoresArestas(copia[i][:], 'primeira')
             else:
-                soma += (menorAresta(copia[i][:]) + segundaMenorAresta(copia[i][:]))
+                soma += menoresArestas(copia[i][:])
     else:
         for i in range(len(matriz[0][:])):
-            ordenado = np.sort(matriz[i][:], kind = 'quicksort')
-            soma += (ordenado[0] + ordenado[1])
+            soma += menoresArestas(matriz[i][:])
     return np.ceil(soma / 2)
 
 def boundFinal(matriz, solucao):
@@ -144,6 +153,15 @@ def bnbTsp(A, n):
                         
     return melhorSolucao
 
+def approxTspTour(G, A, c):
+    arvoreMinima = tree.minimum_spanning_tree(G,algorithm="prim")
+    caminhamentoPreOrdem = nx.dfs_preorder_nodes(arvoreMinima, source=0)
+    cicloHamiltoniano = list(caminhamentoPreOrdem) + [0]
+    custo = boundFinal(A, cicloHamiltoniano)
+    return cicloHamiltoniano
+
+
+
 def signal_handler(signum,frame):
     raise Exception("Timed out!")
 signal.signal(signal.SIGALRM, signal_handler)
@@ -153,18 +171,11 @@ tests = open('tests.csv','a')
 
 writer = csv.writer(tests)
 
-A = definindoInstancias(instancias, tipoDistancia)
+A, G = definindoInstancias(instancias, tipoDistancia)
 
 try:
-    ini = time.time()
-    tracemalloc.start()
-    solucao = bnbTsp(A, 2**(instancias))
-    print(solucao)
+    solucao = bnbTsp(A,  2**(instancias))
     writer.writerow(solucao)
-    fim = time.time()
-    memexp = tracemalloc.get_traced_memory()[1]
-    timeexp = round(fim-ini,1)
-    tracemalloc.stop()
     tests.close()   
 except Exception:
     tests.close()    
