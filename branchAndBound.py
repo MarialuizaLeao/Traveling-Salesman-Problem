@@ -7,7 +7,6 @@ import sys
 import time
 import signal
 import csv
-import tracemalloc
 
 instancias = sys.argv[1]
 tipoDistancia = sys.argv[2]
@@ -15,7 +14,7 @@ algoritmo = sys.argv[3]
 instancias = int(instancias)
 
 def Manhattan(x, y):
-    matriz = np.full((len(x), len(y)), 0, dtype=int)
+    matriz = np.full((len(x), len(y)), 0, dtype=float)
     for i in range(len(x)):
         for j  in range(len(y)):
             if (i == j):
@@ -49,13 +48,13 @@ def geradorPontos(N):
     return xCoordenadas, yCoordenadas
 
 def definindoInstancias(instancias, tipoDistancia):
-    x, y  = geradorPontos(2**(instancias))
+    x, y  = geradorPontos(instancias)
     matrizDistancia = []
     if (tipoDistancia == 'euclidiana'):
         matrizDistancia = Euclides(x, y)
     elif(tipoDistancia == 'manhattan'):
         matrizDistancia = Manhattan(x, y)
-    G = nx.complete_graph(2**(instancias))
+    G = nx.complete_graph(instancias)
     for (u,v) in G.edges():
         G.edges()[u,v]['weight'] = matrizDistancia[u][v]
         
@@ -80,46 +79,30 @@ class Node:
                         return True
         return False
 
-def menoresArestas(arestas, tipo = None):
-    min = np.inf
-    segundoMin = np.inf
-    for i in range(len(arestas)):
-        if(arestas[i] <= min and arestas[i] != np.inf):
-            segundoMin = min
-            min = arestas[i]
-        elif(arestas[i] <= segundoMin and arestas[i] != min):
-            segundoMin = arestas[i]
-    if(tipo == 'primeiro'):
-        return min
-    if(tipo == 'segundo'):
-        return segundoMin
-    return min + segundoMin        
-
 def bound(matriz, solucao):
-    copia = matriz.copy()
     soma = 0
     tamanho = len(matriz[0][:])
-    if (len(solucao) != 1):
-        for i in range(tamanho):
-            if i in solucao:
-                if(i == 0):
-                    soma += (2 * copia[i][solucao[i + 1]])
-                    copia[i][solucao[i + 1]] = np.inf
-                    copia[solucao[i + 1]][i] = np.inf
-                    soma += menoresArestas(copia[i][:], 'primeira')
-                else:
-                    if(i < len(solucao) - 1):
-                        soma += (2 * copia[i][solucao[i + 1]])
-                        copia[i][solucao[i + 1]] = np.inf
-                        copia[solucao[i + 1]][i] = np.inf
-                    else:
-                        soma += menoresArestas(copia[i][:], 'primeira')
-            else:
-                soma += menoresArestas(copia[i][:])
-    else:
-        for i in range(len(matriz[0][:])):
-            soma += menoresArestas(matriz[i][:])
-    return np.ceil(soma / 2)
+    resto = []
+    for i in range(tamanho):
+        if i not in solucao:
+            resto.append(i)
+    for i in range(len(solucao) - 1):
+        soma += matriz[solucao[i]][solucao[i + 1]]
+    min = np.inf
+    for i in resto:
+        if(matriz[solucao[-1]][i] < min):
+            min = matriz[solucao[-1]][i]
+    if(len(resto) != 0):
+        soma += min
+    p = [solucao[0]] + resto
+    for r in resto:
+        min = np.inf
+        for i in p:
+            if(i != r):
+                if(matriz[r][i] < min):
+                    min = matriz[r][i]
+        soma += min
+    return soma * 2
 
 def boundFinal(matriz, solucao):
     soma = 0
@@ -130,6 +113,7 @@ def boundFinal(matriz, solucao):
 def bnbTsp(A, n):
     raiz = Node(bound(A, [0]), 0, 0, [0])
     fila = []
+    heap.heapify(fila)
     heap.heappush(fila, raiz)
     melhorValor = np.inf
     melhorSolucao = []
@@ -147,11 +131,11 @@ def bnbTsp(A, n):
                             novoNo = Node(bound(A, np.append(no.solucao, k)), no.nivel + 1, no.custo + A[no.solucao[-1]][k], np.append(no.solucao, k))
                             heap.heappush(fila, novoNo)
                 else:
-                    if (A[no.solucao[-1]][0] != np.inf and boundFinal(A, np.append(no.solucao, 0)) < melhorValor and len(no.solucao) == n):
+                    if (A[no.solucao[-1]][0] != np.inf and boundFinal(A, np.append(no.solucao, 0)) < melhorValor):
                         novoNo = Node(boundFinal(A, np.append(no.solucao, 0)), no.nivel + 1, no.custo + A[no.solucao[-1]][0], np.append(no.solucao, 0))
                         heap.heappush(fila, novoNo)
                         
-    return melhorSolucao
+    return melhorSolucao, melhorValor
 
 def approxTspTour(G, A, c):
     arvoreMinima = tree.minimum_spanning_tree(G,algorithm="prim")
@@ -194,14 +178,21 @@ writer = csv.writer(tests)
 
 A, G = definindoInstancias(instancias, tipoDistancia)
 
+inicio = 0.0
+fim = 0.0
+
 try:
     if(algoritmo == 'bnb'):
-        solucao = bnbTsp(A, 2**(instancias))
+        inicio = time.time()
+        solucao, custo = bnbTsp(A, instancias)
+        fim = time.time()
     elif(algoritmo == 'tour'):
         solucao = approxTspTour(G, A, 2**(instancias))
     elif(algoritmo == 'chr'):
         solucao = approxTspChristofides(G, A,  2**(instancias))
+    print(fim - inicio)
     writer.writerow(solucao)
+    print(custo)
     tests.close()   
 except Exception:
     tests.close()    
